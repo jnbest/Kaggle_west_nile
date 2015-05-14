@@ -80,8 +80,8 @@ Neural<-function(train_dat,test_dat,variables,y_var) {
 
 Random<-function (train_dat, test_dat, variables, y_var) 
 {
-    x<-train_dat[,names(train_dat) %in% variables]
-    fgl.res <- tuneRF(x, train_dat[,y_var], stepFactor=1.5)
+    x<-subset(train_dat,select=names(train_dat) %in% variables)
+    fgl.res <- tuneRF(x, train_dat[,eval(as.name(y_var))], stepFactor=1.5)
     mtry<-fgl.res[fgl.res[,'OOBError']==min(fgl.res[,'OOBError']),'mtry']
     
     fm <- as.formula(paste(y_var, "~", paste(variables, collapse = "+")))
@@ -144,12 +144,15 @@ x.validate<-function (data, vtu, outVar, FUN = Cube, k = 5, err = "perc",var.sel
             }
             err.vect[i] = perc.err
         } else if (err=='auc'){
+            jason('pROC')
             if ("data.table" %in% class(test)) {
-                err.vect[i]=auc(test[,eval(outVar)],test$pred)
+                ROC.val<-roc(test[,eval(as.name(outVar))],test$pred)
+                err.vect[i]=ROC.val$auc
                 
             }
             else {
-                err.vect[i]=auc(test[,outVar],test$pred)
+                ROC.val=roc(test[,outVar],test$pred)
+                err.vect[i]=ROC.val$auc
             }
             # err.vect[i] = perc.err
         }

@@ -87,7 +87,22 @@ weather1 <- weather[, c(lapply(.SD,mean,na.rm=TRUE)), by=Date, .SDcols=key.vars1
 weather2 <- weather[, c(lapply(.SD,max,na.rm=TRUE)), by=Date, .SDcols=key.vars2]
 #merging back together
 
+
+
 weather<-merge(weather1,weather2,by='Date')
+
+for(i in names(weather)[names(weather) %ni% 'Date']){
+    print(i)
+    a<-median(weather[,eval(as.name(i))],na.rm=TRUE)
+    weather[!is.finite(weather[,eval(as.name(i))]),eval(as.name(i)):=a]
+    weather[is.na(weather[,eval(as.name(i))]),eval(as.name(i)):=a]
+    
+    
+}
+
+
+    
+
 
 train<-merge(train,weather,by='Date',all.x=TRUE)
 
@@ -150,7 +165,13 @@ for(i in 2:7){
     train<-merge(train,weather,by=paste0('Date',i),all.x=TRUE)
     
 }
-setnames(weather,colnames(weather),init.names)
+setnames(weather,colnames(weather),init.names) #returning names back
+
+
 # modeling ----------------------------------------------------------------
+dont.use<-c(names(train)[grep('Date',names(train))], 'Address','Street','AddressNumberAndStreet','Lattitude','Longitude','AddressAccuracy','WnvPresent','Trap')
+vars<-names(train)[names(train) %ni% dont.use]
 
+validation.dat<-x.validate(data=train,vtu=vars,outVar='WnvPresent',FUN=Random,err='auc',dat.return=TRUE)
 
+x.validate(data=train,vtu=vars,outVar='WnvPresent',FUN=Random,err='auc')
