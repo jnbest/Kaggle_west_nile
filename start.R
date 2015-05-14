@@ -6,31 +6,47 @@
 # ALL NOTES GO IN THIS AREA
 # 1. do we want to use lagged weather variables because yesterday's weather affects today's hatch?
 # 2. need to merge with nearest spray or perhaps merge all sprays and then see the effect area of the spray
-#  
-#  
-# 
-# 
-# 
-# 
-# 
-# 
+#  3. need to include month
+#  4. need to include past weather - mosquitos live 10 days
+#       need to really get past wetness and past temperature (former being good for mosq. latter being bad for cold)
+# 5. prolonged rains might be terrible. sprinkles might be better
+# 6. oversample wnvpresent==1
+# 7. where is the wind blowing in relation to lattitude/longitude and see if number of mosquitos in one area are going to move toward the other part of the city
+#       -so if houston has 1000 mosquitos on january 1st and the direction is northwest austin might have a lot of mosquitos on jan 5th 
+#       -need to get the speed of the wind and the result direction to get the exact lat long and the distance from 1000
+#       -resultdir is possibly the 360 direction/10 off of true north
+#       -potentially sample different percentages of the average speed of wind
+#8. my task - to deal with wind and lagged variables
 
 
 # working with train data -------------------------------------------------------
+jason_dir <- "C:/Users/jbest/Box Sync/Personal (Private) - jbest/R/kaggle/westNile"
 
-data_dir <- "C:/Users/jbest/Box Sync/Personal (Private) - jbest/R/kaggle/westNile"
+#Brian's Directory
+brian_dir <- "C:/Users/user1/Documents/Kaggle"
+
+if (file.exists(brian_dir)){
+    data_dir<-brian_dir
+} else if (file.exists(jason_dir)) {
+    
+    data_dir<-jason_dir
+} else {
+    
+    stop('directory doesnt exist')
+}
+
 source(file.path(data_dir,'scripts/helperFunctions.R')) #pulling in helper functions
 source(file.path(data_dir,'scripts/dependencies.R')) #reading in library dependencies
 
 
 train<-fread(file.path(data_dir,'train.csv')) #i'd rather use data.tables
-weather<-fread(file.path(data_dir,'weather.csv'))
+
 
 train[,Date:=as.Date(Date)]
 train[,Species:=as.factor(Species)]
 train[,Trap:=as.factor(Trap)]
 
-
+weather<-fread(file.path(data_dir,'weather.csv'))
 
 # working with weather ----------------------------------------------------
 #there are 2 stations and they report different numbers. sometimes station 2 has missing observations as well
@@ -90,7 +106,6 @@ spray[,combTime:=as.POSIXct(combTime,format='%Y-%m-%d %X')]
 
 
 
-#train<-merge(train,spray,by='Date')
 # basic info --------------------------------------------------------------
 
 tabling<-function(dat,var){
@@ -99,6 +114,12 @@ tabling<-function(dat,var){
     
 }
 
+#why are there more addresses than traps?
+#delete<-train[,list(address=length(unique(Address))),by=Trap]
+#T009, T035
+#delete<-subset(train,subset=Trap %in% c('T009','T035'))
+#delete<-delete[!duplicated(delete[,c('Trap','Address'),with=FALSE]),]
+#within 4 kilometers of each other
 vars<-c('Species','NumMosquitos','WnvPresent','Trap','AddressAccuracy')
 
 lapply(vars,tabling,dat=train)
@@ -111,6 +132,25 @@ lapply(vars,tabling,dat=train)
 
 # feature engineering -----------------------------------------------------
 
+#doing lags on weather variables
 
+#getting lagged dates so i can merge#
+for(i in 1:7){
+    
+    train[,eval(as.name(paste0('Date',i))):=Date-i]
+    
+}
+
+#changing names of weather dataset
+init.names<-copy(colnames(weather))
+for(i in 2:7){
+    
+    print(i)
+    setnames(weather,colnames(weather),paste0(init.names,i)) #going to change all of the names so i can reference them as lags
+    train<-merge(train,weather,by=paste0('Date',i),all.x=TRUE)
+    
+}
+setnames(weather,colnames(weather),init.names)
+# modeling ----------------------------------------------------------------
 
 
