@@ -175,7 +175,7 @@ for(i in unique(spray$Date)){
     init.spraydat<-subset(spray,subset=Date==i,select=c('Longitude','Latitude'))
     train[,eval(as.name(paste0('min.dist',j))):=min.distance(Longitude,Latitude),by=1:nrow(train)] #running on each individual row. takes forever. need to vectorize
     train[,eval(as.name(paste0('min.lat',j))):=min.latitude(Longitude,Latitude),by=1:nrow(train)]
-    train[,eval(as.name(paste0('min.lat',j))):=min.longitude(Longitude,Latitude),by=1:nrow(train)]
+    train[,eval(as.name(paste0('min.long',j))):=min.longitude(Longitude,Latitude),by=1:nrow(train)]
    j=j+1
 }
 
