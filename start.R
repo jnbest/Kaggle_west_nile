@@ -116,6 +116,124 @@ spray[,Date:=as.Date(Date)]
 spray[,combTime:=paste(Date,Time)]
 spray[,combTime:=as.POSIXct(combTime,format='%Y-%m-%d %X')]
 
+#Trying to build a 4-column dataframe that calculates distance from each trap from the spray locations
+#Probably need to just define a function and run an lapply or something, but my mind always 
+#starts with for loop logic
+#Unfortunately this runs endlessly on my machine, but it should be pretty quick.  Not sure why.
+
+#Maybe simplify even further with a WHILE Loop?  i.e. 
+#Populate three new columns in the train data table with zeros
+#While tran$Date==spray$date perform the distance function
+#Otherwise leave it at zero for now?
+
+# JB NOTES:
+# just merge with location and date - i can see if all of the locations are in our train dataset
+# going to use haversine method for distance in geosphere package
+# for each date i'm going to grab the nearest latitude and longitude for that area by minimizing haversine
+# and create a new variable called nearlong nearlat and merge based on date and those
+# # two variables
+# ISSUES: 1. I WANT TO HAVE THE OTHER SPRAY DATES DISTANCE REPLACED WHEN THE NEW SPRAY DATE COMES ABOUT
+# 2. I WANT TO EVENTUALLY CAPTURE WIND
+# "2011-08-29" "2011-09-07" "2013-07-17" "2013-07-25" "2013-08-08" "2013-08-15" "2013-08-16" "2013-08-22" "2013-08-29" "2013-09-05"
+
+   
+#we could go through and create columns for each date and the minimum distance associated with that date
+#need the lattitude and longitude associated with that date as well
+#3 cols - date1.dist, date1.lat,date1.long
+
+min.distance<-function(x,y){
+    
+    dhav=distHaversine(c(x,y),init.spraydat) #getting distance from that observation
+    ind.min<-which(dhav==min(dhav)) #getting the index of the minimum distance
+    min.dist<-dhav[ind.min] #minimum distance
+    return(min.dist)
+    
+}
+min.latitude<-function(x,y){
+    
+    dhav=distHaversine(c(x,y),init.spraydat) #getting distance from that observation    ind.min<-which(dhav==min(dhav)) #getting the index of the minimum distance    
+    ind.min<-which(dhav==min(dhav)) #getting the index of the minimum distance
+    min.lat<-init.spraydat[ind.min,Latitude]    
+    return(min.lat)
+ 
+}
+
+min.longitude<-function(x,y){
+    
+    dhav=distHaversine(c(x,y),init.spraydat) #getting distance from that observation    ind.min<-which(dhav==min(dhav)) #getting the index of the minimum distance
+    ind.min<-which(dhav==min(dhav)) #getting the index of the minimum distance
+    min.long<-init.spraydat[ind.min,Longitude] #longitude with the minimum distance
+    return(min.long)
+
+    
+}
+
+j=1
+for(i in unique(spray$Date)){
+    
+    print(i)
+    init.spraydat<-subset(spray,subset=Date==i,select=c('Longitude','Latitude'))
+    train[,eval(as.name(paste0('min.dist',j))):=min.distance(Longitude,Latitude),by=1:nrow(train)] #running on each individual row. takes forever. need to vectorize
+    train[,eval(as.name(paste0('min.lat',j))):=min.latitude(Longitude,Latitude),by=1:nrow(train)]
+    train[,eval(as.name(paste0('min.lat',j))):=min.longitude(Longitude,Latitude),by=1:nrow(train)]
+   j=j+1
+}
+
+
+
+########################################################################
+# 
+# train_dt<-select(train, c(Date, Longitude, Latitude))
+# 
+# dist_spray<-function(train_dt, spray){
+#     minmedmax<-as.data.table(matrix(rep(rep(0, times = 4), 
+#                                         length(train_dt$Latitude)), ncol = 4))
+#     setnames(minmedmax,names(minmedmax),c("Date", "dist_min", "dist_ave", "dist_max"))
+#     
+#     for(i in 1:length(unique(spray$Date))){ 
+#         
+#         for(j in 1:length(train_dt$Date)){
+#             if(train_dt$Date[j] == spray$Date[i]){
+#                 trap_loc<-matrix(c(train_dt$Longitude[j], train_dt$Latitude[j]), ncol = 2)
+#                 
+#                 spray_loc<-matrix(spray[which(spray$Date == as.Date(unique(spray$Date)[i])),
+#                                         c("Longitude", "Latitude")], ncol = 2)
+#                 distances<-spDistsN1(spray_loc, trap_loc, longlat = TRUE)
+#                 
+#                 minmedmax$Date[j]<-train_dt$Date[j]
+#                 minmedmax$dist_min[j]<-min(distances)
+#                 minmedmax$dist_ave[j]<-mean(distances)
+#                 minmedmax$dist_max[j]<-max(distances)
+#             }
+#             else{
+#                 minmedmax$Date[j]<-train_dt$Date[j]
+#                 minmedmax$dist_min[j]<-0
+#                 minmedmax$dist_ave[j]<-0
+#                 minmedmax$dist_max[j]<-0
+#             }
+#             
+#             
+#         }
+#     }
+#     
+# }
+
+
+#Do we know if there are sprays during the test set? 
+#It's almost like we have to figure out the effect of the sprays 
+#  so we can remove that effect from the learning algoritm... 
+#The rarity of sprays creates another unbalanced situation in which the vast majority of dates will have
+#   no sprays at all...
+
+#Idea for calculating locations via wind speed. (Not Spray related, just brainstorming)
+#Pick a central lat/long over the area of interest (Chicago) for a point.  Populate a matrix incrementally
+# covering the entire area
+#use the distance calculator in reverse to supply the coordinates of a calculated distance - this may not work...
+#Need to figure out the cumulative effect of mosquitos going by a trap...i.e. 50% trapped from original 
+#bunch, 25% 5 hours later from arriving bunch, 10% 15 hours later from final bunch blowing through...  
+#i.e. 24 new variables guesstimating the locations of bugs throughout the day given weather/wind
+
+#Make new variables related to the traps that includes time and distance away from sprays
 
 
 
